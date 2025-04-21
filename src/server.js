@@ -91,7 +91,13 @@ const connectWithRetry = async () => {
                 socketTimeoutMS: 45000,
                 ssl: true,
                 tls: true,
-                tlsAllowInvalidCertificates: true
+                tlsAllowInvalidCertificates: false,
+                retryWrites: true,
+                w: 'majority',
+                minPoolSize: 0,
+                maxPoolSize: 10,
+                connectTimeoutMS: 10000,
+                family: 4
             });
             console.log('✅ Conectado a MongoDB exitosamente');
             return true;
