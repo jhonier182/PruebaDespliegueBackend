@@ -106,6 +106,15 @@ app.get('/', (_, res) => {
     });
 });
 
+// Health check endpoint
+app.get('/api/health', (_, res) => {
+    res.status(200).json({
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
+    });
+});
+
 // Manejo de errores global
 app.use((err, req, res, next) => {
     console.error('Error no manejado:', err);
