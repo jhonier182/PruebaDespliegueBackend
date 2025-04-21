@@ -1,7 +1,14 @@
 const UserModel = require('../models/UserModel');
 const bcrypt = require('bcrypt');
+const mongoose = require('mongoose');
 
 const setupAdminAccount = async () => {
+    // Verificar si Mongoose está conectado
+    if (mongoose.connection.readyState !== 1) {
+        console.warn('⚠️ No se puede configurar la cuenta de administrador: MongoDB no está conectado');
+        return;
+    }
+
     try {
         // Verificar si existe algún usuario admin
         const adminExists = await UserModel.findOne({ role: 'admin' });
@@ -43,7 +50,7 @@ const setupAdminAccount = async () => {
         }
     } catch (error) {
         console.error('❌ Error al configurar cuenta de administrador:', error);
-        throw error;
+        // No relanzamos el error para permitir que el servidor siga iniciando
     }
 };
 

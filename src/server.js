@@ -74,6 +74,13 @@ socketService.initialize(io);
 
 // Conexión a MongoDB con reintentos
 const connectWithRetry = async () => {
+    // Verificar si la URI de MongoDB está definida
+    if (!process.env.MONGODB_URI) {
+        console.error('❌ Error: Variable de entorno MONGODB_URI no está definida');
+        console.warn('⚠️ La aplicación funcionará con funcionalidad limitada.');
+        return false;
+    }
+    
     const maxRetries = 5;
     let currentTry = 1;
 
@@ -84,17 +91,18 @@ const connectWithRetry = async () => {
                 socketTimeoutMS: 45000,
             });
             console.log('✅ Conectado a MongoDB exitosamente');
-            break;
+            return true;
         } catch (err) {
             console.error(`❌ Intento ${currentTry} de ${maxRetries} fallido:`, err.message);
             if (currentTry === maxRetries) {
                 console.error('❌ No se pudo conectar a MongoDB después de múltiples intentos');
-                process.exit(1);
+                return false;
             }
             await new Promise(resolve => setTimeout(resolve, 5000)); // Espera 5 segundos antes de reintentar
             currentTry++;
         }
     }
+    return false;
 };
 
 // Ruta de estado del servidor
@@ -126,13 +134,23 @@ app.use((err, req, res, next) => {
 // Inicialización del servidor
 const startServer = async () => {
     try {
-        await connectWithRetry();
-        await setupAdminAccount();
+        const dbConnected = await connectWithRetry();
+        
+        if (dbConnected) {
+            try {
+                await setupAdminAccount();
+            } catch (error) {
+                console.error('❌ Error al configurar cuenta de administrador:', error.message);
+            }
+        }
         
         server.listen(PORT, () => {
             console.log(`✅ Servidor corriendo en el puerto ${PORT}`);
-            console.log(`✅ Ambiente: ${process.env.NODE_ENV}`);
-            console.log(`✅ URL Frontend: ${process.env.FRONTEND_URL}`);
+            console.log(`✅ Ambiente: ${process.env.NODE_ENV || 'development'}`);
+            console.log(`✅ URL Frontend: ${process.env.FRONTEND_URL || 'no configurado'}`);
+            if (!dbConnected) {
+                console.warn('⚠️ Servidor funcionando sin conexión a MongoDB - funcionalidad limitada');
+            }
         });
     } catch (error) {
         console.error('❌ Error al iniciar el servidor:', error);
