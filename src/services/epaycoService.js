@@ -1,25 +1,13 @@
-// Verificar si las credenciales de ePayco están disponibles
-let Epayco;
-if (!process.env.EPAYCO_PUBLIC_KEY || !process.env.EPAYCO_PRIVATE_KEY) {
-    console.warn('Advertencia: Credenciales de ePayco no están configuradas. El servicio de pagos no estará disponible.');
-    // Crear un mock para evitar errores
-    Epayco = {
-        charge: {
-            create: () => { throw new Error('Servicio de ePayco no configurado'); },
-            get: () => { throw new Error('Servicio de ePayco no configurado'); },
-            reverse: () => { throw new Error('Servicio de ePayco no configurado'); }
-        }
-    };
-} else {
-    Epayco = require('epayco-sdk-node')({
-        apiKey: process.env.EPAYCO_PUBLIC_KEY,
-        privateKey: process.env.EPAYCO_PRIVATE_KEY,
-        lang: 'ES',
-        test: process.env.EPAYCO_TEST === 'true'
-    });
-}
+const Epayco = require('epayco-sdk-node')({
+    apiKey: process.env.EPAYCO_PUBLIC_KEY,
+    privateKey: process.env.EPAYCO_PRIVATE_KEY,
+    lang: 'ES',
+    test: process.env.EPAYCO_TEST === 'true'
+});
 
 class EpaycoService {
+
+    
     static async createPayment(paymentInfo) {
         try {
             console.log('Iniciando proceso de pago con ePayco:', JSON.stringify(paymentInfo, null, 2));

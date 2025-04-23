@@ -5,6 +5,7 @@ const { verifyToken, isAdmin, optionalAuth } = require('../middlewares/authMiddl
 
 // Rutas públicas
 router.get('/scan/:qrId', optionalAuth, QRController.scanQR);
+router.put('/scan/:qrId', optionalAuth, QRController.scanQR);
 
 // Middleware de autenticación para rutas protegidas
 router.use(verifyToken);
@@ -15,6 +16,7 @@ router.get('/user', QRController.getUserQRs);
 router.delete('/:qrId', QRController.deleteQR);
 router.get('/user/my-codes', QRController.getUserQRCodes);
 router.get('/:id', QRController.getQRById);
+router.get('/:qrId/history', QRController.getQRHistory);
 
 // Rutas para administradores
 router.use(isAdmin);

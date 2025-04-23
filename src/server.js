@@ -19,52 +19,95 @@ const QRCode = require('qrcode');
 
 const app = express();
 const server = http.createServer(app);
-
-// Configuración de CORS dinámica basada en el entorno
-const corsOptions = {
-    origin: function (origin, callback) {
-        const allowedOrigins = [
-            process.env.FRONTEND_URL,
-            process.env.API_URL,
-            // Permitir localhost en desarrollo
-            'http://localhost:5175',
-            'http://localhost:3000'
-        ].filter(Boolean); // Elimina valores undefined/null
-
-        if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-            callback(null, true);
-        } else {
-            callback(new Error('Not allowed by CORS'));
-        }
-    },
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
-    credentials: true,
-    maxAge: 86400
-};
-
-// Configuración de Socket.io
 const io = socketIo(server, {
-    cors: corsOptions
+    cors: {
+        origin: [
+            process.env.FRONTEND_URL,
+            process.env.NGROK_FRONTEND_URL,
+        ],
+        methods: ['GET', 'POST'],
+        credentials: true
+    }
 });
-
 const PORT = process.env.PORT || 5000;
 
 // Middlewares esenciales
 app.use(express.json());
 app.use(cookieParser());
-app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
-app.use(cors(corsOptions));
+app.use(morgan('dev'));
+
+// Obtener los orígenes permitidos para CORS
+const getAllowedOrigins = () => {
+    const origins = [
+        'http://localhost:5175', 
+        'http://localhost:3000'
+    ];
+    
+    // Añadir URLs de ngrok si están definidas
+    if (process.env.NGROK_FRONTEND_URL) {
+        origins.push(process.env.NGROK_FRONTEND_URL);
+    }
+    
+    if (process.env.NGROK_DOMAIN) {
+        const ngrokUrl = `https://${process.env.NGROK_DOMAIN}`;
+        if (!origins.includes(ngrokUrl)) {
+            origins.push(ngrokUrl);
+        }
+    }
+    
+    return origins;
+};
+
+// Configuración de CORS
+app.use(cors({
+    origin: getAllowedOrigins(),
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With', 'X-CSRF-Token'],
+    exposedHeaders: ['Content-Range', 'X-Content-Range'],
+    credentials: true,
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
+    maxAge: 86400 // Cache preflight requests for 24 hours
+}));
+
+// Manejar solicitudes OPTIONS
+app.options('*', (req, res) => {
+    // Obtener el origen de la solicitud
+    const origin = req.headers.origin;
+    const allowedOrigins = getAllowedOrigins();
+    
+    // Si el origen está en la lista de permitidos, establecerlo en la respuesta
+    if (allowedOrigins.includes(origin)) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+    } else {
+        res.setHeader('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'http://localhost:5175');
+    }
+    
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, Origin, X-Requested-With, X-CSRF-Token');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.status(204).end();
+});
 
 // Configuración de sesión y autenticación
 app.use(sessionConfig);
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Middleware de logging solo en desarrollo
+// Middleware de logging en desarrollo
 if (process.env.NODE_ENV === 'development') {
     app.use(sessionLogger);
 }
+
+// Endpoint directo para pruebas
+app.post('/api/direct-test', (req, res) => {
+    console.log('Direct test endpoint called with:', req.body);
+    res.json({
+        success: true,
+        message: 'Direct test endpoint working!',
+        body: req.body
+    });
+});
 
 // Rutas API
 app.use('/api', routes);
@@ -72,95 +115,24 @@ app.use('/api', routes);
 // Configuración de Socket.io
 socketService.initialize(io);
 
-// Conexión a MongoDB con reintentos
-const connectWithRetry = async () => {
-    // Verificar si la URI de MongoDB está definida
-    if (!process.env.MONGODB_URI) {
-        console.error('❌ Error: Variable de entorno MONGODB_URI no está definida');
-        console.warn('⚠️ La aplicación funcionará con funcionalidad limitada.');
-        return false;
-    }
-    
-    const maxRetries = 5;
-    let currentTry = 1;
+// Conexión a MongoDB
+mongoose.connect(process.env.MONGODB_URI)
+    .then(() => console.log('Conectado a MongoDB'))
+    .catch(err => console.error('Error conectando a MongoDB:', err));
 
-    while (currentTry <= maxRetries) {
-        try {
-            await mongoose.connect(process.env.MONGODB_URI, {
-                serverSelectionTimeoutMS: 5000,
-                socketTimeoutMS: 45000,
-                ssl: true,
-                tls: true,
-                tlsAllowInvalidCertificates: process.env.NODE_ENV === 'development',
-                retryWrites: true,
-                w: 'majority',
-                minPoolSize: 0,
-                maxPoolSize: 10,
-                connectTimeoutMS: 10000,
-                family: 4,
-                authSource: 'admin',
-                directConnection: false
-            });
-            console.log('✅ Conectado a MongoDB exitosamente');
-            return true;
-        } catch (err) {
-            console.error(`❌ Intento ${currentTry} de ${maxRetries} fallido:`, err.message);
-            if (currentTry === maxRetries) {
-                console.error('❌ No se pudo conectar a MongoDB después de múltiples intentos');
-                return false;
-            }
-            await new Promise(resolve => setTimeout(resolve, 5000)); // Espera 5 segundos antes de reintentar
-            currentTry++;
-        }
-    }
-    return false;
-};
-
-// Ruta de estado del servidor
-app.get('/', (_, res) => {
-    res.json({
-        status: 'ok',
-        environment: process.env.NODE_ENV,
-        timestamp: new Date().toISOString()
-    });
-});
-
-// Health check endpoint
-app.get('/api/health', (_, res) => {
-    res.status(200).json({
-        status: 'healthy',
-        timestamp: new Date().toISOString(),
-        mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
-    });
-});
-
-// Manejo de errores global
-app.use((err, req, res, next) => {
-    console.error('Error no manejado:', err);
-    res.status(err.status || 500).json({
-        error: process.env.NODE_ENV === 'production' ? 'Error interno del servidor' : err.message
-    });
-});
+// Ruta de estado del servidor prueba el backend en el navegador (localhost:5000)
+app.get('/', (_, res) => res.send('🚀 PetConnect Backend funcionando!'));
 
 // Inicialización del servidor
 const startServer = async () => {
     try {
-        const dbConnected = await connectWithRetry();
-        
-        if (dbConnected) {
-            try {
-                await setupAdminAccount();
-            } catch (error) {
-                console.error('❌ Error al configurar cuenta de administrador:', error.message);
-            }
-        }
+        await connectDB();
+        await setupAdminAccount();
         
         server.listen(PORT, () => {
-            console.log(`✅ Servidor corriendo en el puerto ${PORT}`);
-            console.log(`✅ Ambiente: ${process.env.NODE_ENV || 'development'}`);
-            console.log(`✅ URL Frontend: ${process.env.FRONTEND_URL || 'no configurado'}`);
-            if (!dbConnected) {
-                console.warn('⚠️ Servidor funcionando sin conexión a MongoDB - funcionalidad limitada');
+            console.log(`✅ Servidor corriendo en el puerto http://localhost:${PORT}`);
+            if (process.env.NGROK_DOMAIN) {
+                console.log(`✅ Ngrok URL: https://${process.env.NGROK_DOMAIN}`);
             }
         });
     } catch (error) {
@@ -168,17 +140,5 @@ const startServer = async () => {
         process.exit(1);
     }
 };
-
-// Manejo de señales de terminación
-process.on('SIGTERM', () => {
-    console.log('Recibida señal SIGTERM. Cerrando servidor...');
-    server.close(() => {
-        console.log('Servidor cerrado.');
-        mongoose.connection.close(false, () => {
-            console.log('Conexión MongoDB cerrada.');
-            process.exit(0);
-        });
-    });
-});
 
 startServer();

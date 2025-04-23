@@ -137,20 +137,14 @@ src/
 - `GET /api/users/:id` - Obtener perfil de otro usuario (público) ✅
 
 ### Admin (Usuarios)
+-  `POST /api/admin/register`  Crear un usuario - requiere token admin. ✅
 - `GET /api/admin/users` - Listar todos los usuarios ✅
 - `GET /api/admin/users/:id` - Obtener detalles de un usuario ✅
-- `PUT /api/admin/users/:id` - Actualizar usuario  ❌falta
+- `PUT /api/admin/users/:id` - Actualizar usuario  ✅
 - `PUT /api/admin/users/:id/status` - Activar/Desactivar usuario ✅
-- `PUT /api/admin/users/:id/role` - Cambiar rol de usuario ❌falta
-- `GET /api/admin/stats/users` - Estadísticas de usuarios ❌falta
+- `PUT /api/admin/users/:id/role` - Cambiar rol de usuario ✅
+- `GET /api/admin/status/users` - Estadísticas de usuarios ✅
 - `GET /api/admin/pets` - Listar Todas las mascotas  ✅
-
-### Reportes ADMIN
-- `POST /api/reports/pet/:petId` - Reportar una mascota ❌falta
-- `POST /api/reports/user/:userId` - Reportar un usuario❌falta
-- `GET /api/reports` - Listar reportes (admin)❌falta
-- `PUT /api/reports/:reportId/status` - Actualizar estado de un reporte (admin)❌falta
-- `DELETE /api/reports/:reportId` - Eliminar un reporte (admin)❌falta
 -  `POST /api/admin/register`  Crear un usuario - requiere token admin. ✅
 
 ### Mascotas  Requieren token  
@@ -158,8 +152,7 @@ src/
 - `GET /api/pets/user/pets ` - Obtener mascotas del usuario autenticado ✅
 - `PUT /api/pets/:id` - Actualizar mascota  ✅
 - `DELETE /api/pets/:id` - Eliminar mascota ✅
-
-- `PUT /api/pets/:id/location` - Actualizar ubicación ❌falta
+- `PUT /api/pets/:id/location` - Actualizar ubicación ✅
 
 ### Rutas para fotos de perfil mascota
 - `PUT /api/pets/:id/profile-picture` - Actualizar foto de perfil mascota✅
@@ -175,10 +168,9 @@ src/
 - `POST /api/qr/generate-multiple` - Generar múltiples QRs ✅
 - `GET /api/qr/scan/:qrId` - Escanear código QR (público) ✅
 // crear validador de qr
-- `POST /api/qr/link` - Vincular QR a mascota
-- `GET /api/qr/user` - Obtener QRs del usuario
-- `GET /api/qr` - Obtener todos los QRs (admin)
-- `DELETE /api/qr/:qrId` - Desactivar un QR
+- `POST /api/qr/link` - Vincular QR a mascota ✅
+- `GET /api/qr/user` - Obtener QRs del usuario ✅
+- `DELETE /api/qr/:qrId` - Eliminar un QR ✅
 - `GET /api/qr/:qrId/history` - Ver historial de escaneos de un QR
 - `GET /api/qr/stats` - Estadísticas de QRs (admin)
 
@@ -189,7 +181,7 @@ src/
 - `GET /api/orders/:orderId` - Obtener detalles de una orden ✅
 - `POST /api/payments/confirmation` - Webhook de ePayco para confirmación automática de pagos ✅
 - `GET /api/payments/response` - Redirección después del pago en ePayco ✅
-- `POST /api/orders/:orderId/cancel` - Cancelar una orden ❌falta
+- `POST /api/orders/:orderId/cancel` - Cancelar una orden ✅
 - `GET /api/orders/:orderId/invoice` - Descargar factura de una orden ❌falta
 - `GET /api/orders` - Listar todas las órdenes (admin) ❌falta
 - `PUT /api/orders/:orderId/status` - Actualizar estado de una orden (admin) ❌falta
@@ -319,9 +311,7 @@ Al iniciar la aplicación por primera vez, se crea
 
 **Importante**: Cambiar la contraseña después del primer inicio de sesión.
 
-## 🧪 Pruebas
 
-Para probar el sistema sin necesidad de configurar pagos reales, se han implementado rutas de prueba en `/api/test/` que permiten simular todo el flujo del sistema.
 
 ## 📊 Monitoreo y Logs
 
@@ -341,100 +331,6 @@ Instrucciones para desplegar en diferentes entornos:
 npm run build
 npm start
 ```
-
-## Requisitos Previos
-
-- Node.js (v14 o superior)
-- MongoDB
-- NPM o Yarn
-
-## Configuración del Entorno
-
-1. Clona el repositorio:
-```bash
-git clone <tu-repositorio>
-cd petConnect-Backend
-```
-
-2. Instala las dependencias:
-```bash
-npm install
-```
-
-3. Crea un archivo `.env` basado en `.env.example`:
-```bash
-cp .env.example .env
-```
-
-4. Configura las variables de entorno en el archivo `.env`
-
-## Variables de Entorno Requeridas
-
-- `MONGODB_URI`: URL de conexión a MongoDB
-- `JWT_SECRET`: Secreto para firmar tokens JWT
-- `FRONTEND_URL`: URL del frontend
-- `GOOGLE_CLIENT_ID`: ID de cliente de Google OAuth
-- `GOOGLE_CLIENT_SECRET`: Secreto de cliente de Google OAuth
-- `CLOUDINARY_*`: Credenciales de Cloudinary
-- `EMAIL_USER`: Usuario para envío de correos
-- `EMAIL_PASS`: Contraseña para envío de correos
-
-## Desarrollo Local
-
-```bash
-npm run dev
-```
-
-## Despliegue en Railway
-
-1. Crear una cuenta en Railway (https://railway.app)
-
-2. Conectar el repositorio de GitHub:
-   - Ve a Railway Dashboard
-   - Click en "New Project"
-   - Selecciona "Deploy from GitHub repo"
-   - Selecciona el repositorio
-
-3. Configura las variables de entorno en Railway:
-   - Ve a la sección "Variables"
-   - Añade todas las variables del archivo `.env.example`
-   - Asegúrate de usar valores de producción
-
-4. Railway detectará automáticamente el archivo `railway.toml` y configurará el despliegue
-
-5. El despliegue se realizará automáticamente con cada push a la rama principal
-
-## Endpoints Principales
-
-- `GET /`: Healthcheck del servidor
-- `POST /api/auth/login`: Inicio de sesión
-- `POST /api/auth/register`: Registro de usuario
-- `GET /api/auth/google`: Autenticación con Google
-- Consulta la documentación completa de la API para más detalles
-
-## Características
-
-- Autenticación JWT
-- OAuth con Google
-- Subida de imágenes a Cloudinary
-- Websockets para chat en tiempo real
-- Pagos con ePayco
-- Envío de correos electrónicos
-- Generación de QR
-
-## Mantenimiento
-
-- Los logs se encuentran en la carpeta `logs/`
-- Monitoreo de errores a través de la consola de Railway
-- Reinicio automático en caso de fallos
-
-## Soporte
-
-Para reportar problemas o sugerir mejoras, por favor crea un issue en el repositorio.
-
-## Licencia
-
-Este proyecto está bajo la licencia MIT. Ver el archivo `LICENSE` para más detalles.
 
 
 

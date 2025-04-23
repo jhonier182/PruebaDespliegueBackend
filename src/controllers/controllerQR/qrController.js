@@ -78,14 +78,25 @@ const qrController = {
         try {
             const { qrId } = req.params;
             const scannerUserId = req.user ? req.user.id : null;
+            const locationData = req.body.location || null;
             
             // Delegación de la lógica de negocio a qrData
-            const qrInfo = await qrData.scanQR(qrId, scannerUserId);
+            const qrInfo = await qrData.scanQR(qrId, scannerUserId, locationData);
+            
+            // Si requiere ubicación y no se proporcionó, devolver un mensaje específico
+            if (qrInfo.requiresLocation) {
+                return res.status(200).json({
+                    success: true,
+                    qr: qrInfo,
+                    message: 'Por favor, comparte tu ubicación para ayudar a encontrar a esta mascota'
+                });
+            }
             
             // Respuesta HTTP
             return res.status(200).json({
                 success: true,
-                qr: qrInfo
+                qr: qrInfo,
+                message: locationData ? '¡Gracias por compartir la ubicación!' : 'QR escaneado exitosamente'
             });
         } catch (error) {
             console.error('Error al escanear QR:', error);
@@ -300,6 +311,34 @@ const qrController = {
             return res.status(statusCode).json({
                 success: false,
                 message: 'Error al obtener códigos QR',
+                error: error.message
+            });
+        }
+    },
+
+    /**
+     * Obtiene el historial de escaneos de un QR
+     */
+    getQRHistory: async (req, res) => {
+        try {
+            const { qrId } = req.params;
+            const userId = req.user.id;
+            
+            // Delegación de la lógica de negocio a qrData
+            const history = await qrData.getQRHistory(qrId, userId);
+            
+            // Respuesta HTTP
+            return res.status(200).json({
+                success: true,
+                message: `Se encontraron ${history.length} escaneos para este QR`,
+                history
+            });
+        } catch (error) {
+            console.error('Error al obtener historial de QR:', error);
+            const statusCode = determineStatusCode(error);
+            return res.status(statusCode).json({
+                success: false,
+                message: 'Error al obtener historial de QR',
                 error: error.message
             });
         }

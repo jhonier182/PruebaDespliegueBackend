@@ -8,7 +8,7 @@ const sessionConfig = {
     resave: false,
     saveUninitialized: false,
     store: MongoStore.create({
-        mongoUrl: process.env.MONGODB_URI || 'mongodb://localhost:27017/petconnect',
+        mongoUrl: process.env.MONGODB_URI,
         collectionName: 'sessions'
     }),
     cookie: {
